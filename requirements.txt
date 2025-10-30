@@ -1,39 +1,57 @@
 # Core dependencies
 pandas>=2.0.0
 tqdm>=4.65.0
-
-# Scraping libraries (pilih salah satu atau install semua)
-
-# RECOMMENDED: Simple & Free (No login required)
-ntscraper>=0.4.0
-
-# ALTERNATIVE 1: Most stable (requires dummy Twitter account)
-twscrape>=0.11.0
-
-# ALTERNATIVE 2: Good balance
-tweety-ns>=1.0.0
-
-# ALTERNATIVE 3: Old but sometimes works
-# snscrape>=0.7.0  # Often unstable, not recommended
-
-# For Selenium method (fallback)
-selenium>=4.15.0
-webdriver-manager>=4.0.0
-
-# Data processing & analysis
 numpy>=1.24.0
 python-dateutil>=2.8.0
 
-# For sentiment analysis (next step)
-# transformers>=4.35.0
-# torch>=2.1.0
-# scikit-learn>=1.3.0
+# Scraping libraries, using Selenium method (fallback)
+selenium>=4.15.0
+webdriver-manager>=4.0.0
 
-# For visualization (next step)
-# matplotlib>=3.7.0
-# seaborn>=0.12.0
-# plotly>=5.17.0
-# wordcloud>=1.9.0
+# NLP & Sentiment Analysis
+textblob>=0.17.0
+textblob-id>=0.1.0
+
+# Advanced NLP (Optional - for production)
+transformers>=4.35.0
+torch>=2.1.0
+
+# Machine Learning
+scikit-learn>=1.3.0
+
+# Web Framework
+fastapi>=0.104.0
+uvicorn>=0.24.0
+pydantic>=2.4.0
+
+# Dashboard and Visualization
+streamlit>=1.28.0
+plotly>=5.17.0
+wordcloud>=1.9.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Logging & Monitoring
+loguru>=0.7.0
+
+# Docker
+docker>=6.1.0
+docker-compose>=1.29.0
+
+# Database
+psycopg2-binary>=2.9.0
+sqlalchemy>=2.0.0
+
+# MLOps
+mlflow>=2.8.0
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Utilities
+python-dotenv>=1.0.0
+requests>=2.31.0
 
 # later add-ons
 # undetected-chromedriver
