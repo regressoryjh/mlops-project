@@ -1127,7 +1127,7 @@ if __name__ == "__main__":
     MAX_SCROLLS = 50
     
     # Engagement analysis mode settings
-    ANALYSIS_MAX_TWEETS = 100  # Number of original tweets to analyze
+    ANALYSIS_MAX_TWEETS = 1  # Number of original tweets to analyze
     ANALYSIS_REPLIES_PER_TWEET = 30  # Max replies per tweet
     ANALYSIS_QUOTES_PER_TWEET = 30  # Max quotes per tweet
     
