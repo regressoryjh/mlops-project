@@ -1,0 +1,16 @@
+# 2. docker/Dockerfile.processor
+
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application
+COPY preprocessing/ /app/preprocessing/
+COPY data/ /app/data/
+
+# Run processor
+CMD ["python", "preprocessing/data_cleaner.py"]
