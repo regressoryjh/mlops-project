@@ -10,7 +10,6 @@ webdriver-manager>=4.0.0
 
 # NLP & Sentiment Analysis
 textblob>=0.17.0
-textblob-id>=0.1.0
 
 # Advanced NLP (Optional - for production)
 transformers>=4.35.0
@@ -36,7 +35,6 @@ loguru>=0.7.0
 
 # Docker
 docker>=6.1.0
-docker-compose>=1.29.0
 
 # Database
 psycopg2-binary>=2.9.0
@@ -52,6 +50,8 @@ pytest-cov>=4.1.0
 # Utilities
 python-dotenv>=1.0.0
 requests>=2.31.0
+pyyaml>=6.0.0
 
 # later add-ons
 # undetected-chromedriver
+# git+https://github.com/masdevid/textblob-id.git
