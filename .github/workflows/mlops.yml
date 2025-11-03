@@ -57,354 +57,354 @@ jobs:
           path: data/raw/*.csv
           if-no-files-found: warn
 
-  # Job 2: Data Processing
-  process:
-    runs-on: ubuntu-latest
-    needs: scrape
-    steps:
-      - uses: actions/checkout@v4
+  # # Job 2: Data Processing
+  # process:
+  #   runs-on: ubuntu-latest
+  #   needs: scrape
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: '3.10'
 
-      - name: Download scraped data
-        uses: actions/download-artifact@v4
-        with:
-          name: raw-data
-          path: data/raw/
-        continue-on-error: true
+  #     - name: Download scraped data
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: raw-data
+  #         path: data/raw/
+  #       continue-on-error: true
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+  #     - name: Install dependencies
+  #       run: |
+  #         pip install -r requirements.txt
 
-      - name: Check if data exists
-        run: |
-          # if [ -f "data/raw/"*.csv ]; then
-          # if [ -n "$(ls data/raw/*.csv 2>/dev/null)" ]; then
-          if ls data/raw/*.csv 1> /dev/null 2>&1; then
-            echo "✅ Raw data found"
-            ls -lh data/raw/
-          else
-            echo "⚠️ No raw data found, using sample data"
-            mkdir -p data/raw
-          fi
+  #     - name: Check if data exists
+  #       run: |
+  #         # if [ -f "data/raw/"*.csv ]; then
+  #         # if [ -n "$(ls data/raw/*.csv 2>/dev/null)" ]; then
+  #         if ls data/raw/*.csv 1> /dev/null 2>&1; then
+  #           echo "✅ Raw data found"
+  #           ls -lh data/raw/
+  #         else
+  #           echo "⚠️ No raw data found, using sample data"
+  #           mkdir -p data/raw
+  #         fi
 
-      - name: Clean data
-        run: |
-          python data_cleaner.py
-        continue-on-error: true
+  #     - name: Clean data
+  #       run: |
+  #         python data_cleaner.py
+  #       continue-on-error: true
 
-      - name: Run sentiment analysis
-        run: |
-          python sentiment_analyzer.py
-        continue-on-error: true
+  #     - name: Run sentiment analysis
+  #       run: |
+  #         python sentiment_analyzer.py
+  #       continue-on-error: true
 
-      - name: Run engagement analysis
-        run: |
-          python engagement_analyzer.py
-        continue-on-error: true
+  #     - name: Run engagement analysis
+  #       run: |
+  #         python engagement_analyzer.py
+  #       continue-on-error: true
 
-      - name: Verify processed data
-        run: |
-          if [ -d "data/processed" ] && [ "$(ls -A data/processed/*.csv 2>/dev/null)" ]; then
-            echo "✅ Data processed successfully"
-            ls -lh data/processed/
-          else
-            echo "❌ Data processing failed"
-            exit 1
-          fi
+  #     - name: Verify processed data
+  #       run: |
+  #         if [ -d "data/processed" ] && [ "$(ls -A data/processed/*.csv 2>/dev/null)" ]; then
+  #           echo "✅ Data processed successfully"
+  #           ls -lh data/processed/
+  #         else
+  #           echo "❌ Data processing failed"
+  #           exit 1
+  #         fi
 
-      - name: Upload processed data
-        uses: actions/upload-artifact@v4
-        with:
-          name: processed-data
-          path: data/processed/*.csv
+  #     - name: Upload processed data
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: processed-data
+  #         path: data/processed/*.csv
 
-  # Job 3: Model Training
-  train:
-    runs-on: ubuntu-latest
-    needs: process
-    steps:
-      - uses: actions/checkout@v4
+  # # Job 3: Model Training
+  # train:
+  #   runs-on: ubuntu-latest
+  #   needs: process
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: '3.10'
 
-      - name: Download processed data
-        uses: actions/download-artifact@v4
-        with:
-          name: processed-data
-          path: data/processed/
+  #     - name: Download processed data
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: processed-data
+  #         path: data/processed/
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+  #     - name: Install dependencies
+  #       run: |
+  #         pip install -r requirements.txt
 
-      - name: Check if training scripts exist
-        run: |
-          if [ -f "models/train_model.py" ]; then
-            echo "✅ Training script found"
-          else
-            echo "⚠️ Training script not found, skipping training"
-            echo "Creating dummy model artifacts..."
-            mkdir -p models
-            echo '{"model": "dummy", "accuracy": 0.75}' > models/model_metrics.json
-          fi
+  #     - name: Check if training scripts exist
+  #       run: |
+  #         if [ -f "models/train_model.py" ]; then
+  #           echo "✅ Training script found"
+  #         else
+  #           echo "⚠️ Training script not found, skipping training"
+  #           echo "Creating dummy model artifacts..."
+  #           mkdir -p models
+  #           echo '{"model": "dummy", "accuracy": 0.75}' > models/model_metrics.json
+  #         fi
 
-      - name: Train sentiment model
-        if: hashFiles('models/train_model.py') != ''
-        run: |
-          python models/train_model.py
-        continue-on-error: true
+  #     - name: Train sentiment model
+  #       if: hashFiles('models/train_model.py') != ''
+  #       run: |
+  #         python models/train_model.py
+  #       continue-on-error: true
 
-      - name: Evaluate model
-        if: hashFiles('models/evaluate_model.py') != ''
-        run: |
-          python models/evaluate_model.py
-        continue-on-error: true
+  #     - name: Evaluate model
+  #       if: hashFiles('models/evaluate_model.py') != ''
+  #       run: |
+  #         python models/evaluate_model.py
+  #       continue-on-error: true
 
-      - name: Upload model artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: model-artifacts
-          path: |
-            models/*.pkl
-            models/*.json
-          if-no-files-found: warn
+  #     - name: Upload model artifacts
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: model-artifacts
+  #         path: |
+  #           models/*.pkl
+  #           models/*.json
+  #         if-no-files-found: warn
 
-  # Job 4: Model Testing
-  test:
-    runs-on: ubuntu-latest
-    needs: train
-    steps:
-      - uses: actions/checkout@v4
+  # # Job 4: Model Testing
+  # test:
+  #   runs-on: ubuntu-latest
+  #   needs: train
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: '3.10'
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install pytest pytest-cov
+  #     - name: Install dependencies
+  #       run: |
+  #         pip install -r requirements.txt
+  #         pip install pytest pytest-cov
 
-      - name: Download model artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: model-artifacts
-          path: models/
-        continue-on-error: true
+  #     - name: Download model artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: model-artifacts
+  #         path: models/
+  #       continue-on-error: true
 
-      - name: Check if tests exist
-        run: |
-          if [ -d "tests" ] && [ "$(ls -A tests/*.py 2>/dev/null)" ]; then
-            echo "✅ Test files found"
-            ls -lh tests/
-          else
-            echo "⚠️ No test files found, creating basic test"
-            mkdir -p tests
-            cat > tests/test_basic.py << 'EOF'
-          import pytest
+  #     - name: Check if tests exist
+  #       run: |
+  #         if [ -d "tests" ] && [ "$(ls -A tests/*.py 2>/dev/null)" ]; then
+  #           echo "✅ Test files found"
+  #           ls -lh tests/
+  #         else
+  #           echo "⚠️ No test files found, creating basic test"
+  #           mkdir -p tests
+  #           cat > tests/test_basic.py << 'EOF'
+  #         import pytest
 
-          def test_data_exists():
-              import os
-              assert os.path.exists('data/processed') or os.path.exists('data/raw')
+  #         def test_data_exists():
+  #             import os
+  #             assert os.path.exists('data/processed') or os.path.exists('data/raw')
           
-          def test_import_modules():
-              try:
-                  import pandas
-                  import numpy
-                  assert True
-              except ImportError:
-                  assert False
-          EOF
-          fi
+  #         def test_import_modules():
+  #             try:
+  #                 import pandas
+  #                 import numpy
+  #                 assert True
+  #             except ImportError:
+  #                 assert False
+  #         EOF
+  #         fi
 
-      - name: Run unit tests
-        run: |
-          pytest tests/ -v --cov=. --cov-report=xml
-        continue-on-error: true
+  #     - name: Run unit tests
+  #       run: |
+  #         pytest tests/ -v --cov=. --cov-report=xml
+  #       continue-on-error: true
 
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./coverage.xml
-          flags: unittests
-        continue-on-error: true
+  #     - name: Upload coverage reports
+  #       uses: codecov/codecov-action@v4
+  #       with:
+  #         file: ./coverage.xml
+  #         flags: unittests
+  #       continue-on-error: true
 
-  # Job 5: Build Docker Images
-  build:
-    runs-on: ubuntu-latest
-    needs: test
-    steps:
-      - uses: actions/checkout@v4
+  # # Job 5: Build Docker Images
+  # build:
+  #   runs-on: ubuntu-latest
+  #   needs: test
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+  #     - name: Set up Docker Buildx
+  #       uses: docker/setup-buildx-action@v3
 
-      - name: Check Docker files
-        run: |
-          echo "Checking for Docker files..."
-          if [ -f "docker-compose.yml" ]; then
-            echo "✅ docker-compose.yml found"
-          else
-            echo "❌ docker-compose.yml not found"
-          fi
+  #     - name: Check Docker files
+  #       run: |
+  #         echo "Checking for Docker files..."
+  #         if [ -f "docker-compose.yml" ]; then
+  #           echo "✅ docker-compose.yml found"
+  #         else
+  #           echo "❌ docker-compose.yml not found"
+  #         fi
           
-          if [ -d "docker" ]; then
-            echo "✅ docker/ directory found"
-            ls -lh docker/
-          else
-            echo "⚠️ docker/ directory not found"
-          fi
+  #         if [ -d "docker" ]; then
+  #           echo "✅ docker/ directory found"
+  #           ls -lh docker/
+  #         else
+  #           echo "⚠️ docker/ directory not found"
+  #         fi
 
-      - name: Build scraper image
-        if: hashFiles('docker/Dockerfile.scraper') != ''
-        run: |
-          docker build -f docker/Dockerfile.scraper -t indopopbase-scraper:latest .
-        continue-on-error: true
+  #     - name: Build scraper image
+  #       if: hashFiles('docker/Dockerfile.scraper') != ''
+  #       run: |
+  #         docker build -f docker/Dockerfile.scraper -t indopopbase-scraper:latest .
+  #       continue-on-error: true
 
-      - name: Build processor image
-        if: hashFiles('docker/Dockerfile.processor') != ''
-        run: |
-          docker build -f docker/Dockerfile.processor -t indopopbase-processor:latest .
-        continue-on-error: true
+  #     - name: Build processor image
+  #       if: hashFiles('docker/Dockerfile.processor') != ''
+  #       run: |
+  #         docker build -f docker/Dockerfile.processor -t indopopbase-processor:latest .
+  #       continue-on-error: true
 
-      - name: Build ML service image
-        if: hashFiles('docker/Dockerfile.ml') != ''
-        run: |
-          docker build -f docker/Dockerfile.ml -t indopopbase-ml:latest .
-        continue-on-error: true
+  #     - name: Build ML service image
+  #       if: hashFiles('docker/Dockerfile.ml') != ''
+  #       run: |
+  #         docker build -f docker/Dockerfile.ml -t indopopbase-ml:latest .
+  #       continue-on-error: true
 
-      - name: Build dashboard image
-        if: hashFiles('docker/Dockerfile.dashboard') != ''
-        run: |
-          docker build -f docker/Dockerfile.dashboard -t indopopbase-dashboard:latest .
-        continue-on-error: true
+  #     - name: Build dashboard image
+  #       if: hashFiles('docker/Dockerfile.dashboard') != ''
+  #       run: |
+  #         docker build -f docker/Dockerfile.dashboard -t indopopbase-dashboard:latest .
+  #       continue-on-error: true
 
-      - name: Test Docker Compose config
-        if: hashFiles('docker-compose.yml') != ''
-        run: |
-          docker-compose -f docker-compose.yml config
-        continue-on-error: true
+  #     - name: Test Docker Compose config
+  #       if: hashFiles('docker-compose.yml') != ''
+  #       run: |
+  #         docker-compose -f docker-compose.yml config
+  #       continue-on-error: true
 
-      - name: Summary
-        run: |
-          echo "==================================="
-          echo "Docker Build Summary"
-          echo "==================================="
-          echo "✅ Build stage completed"
-          echo "Check individual steps for details"
+  #     - name: Summary
+  #       run: |
+  #         echo "==================================="
+  #         echo "Docker Build Summary"
+  #         echo "==================================="
+  #         echo "✅ Build stage completed"
+  #         echo "Check individual steps for details"
 
-  # Job 6: Deploy (if on main branch)
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
+  # # Job 6: Deploy (if on main branch)
+  # deploy:
+  #   runs-on: ubuntu-latest
+  #   needs: build
+  #   if: github.ref == 'refs/heads/main'
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Deploy notification
-        run: |
-          echo "🚀 Deploying to production..."
-          echo "Branch: ${{ github.ref }}"
-          echo "Commit: ${{ github.sha }}"
-          echo "Author: ${{ github.actor }}"
+  #     - name: Deploy notification
+  #       run: |
+  #         echo "🚀 Deploying to production..."
+  #         echo "Branch: ${{ github.ref }}"
+  #         echo "Commit: ${{ github.sha }}"
+  #         echo "Author: ${{ github.actor }}"
           
-      - name: Deployment summary
-        run: |
-          echo "==================================="
-          echo "Deployment would happen here"
-          echo "==================================="
-          echo "In production, this would:"
-          echo "- Push Docker images to registry"
-          echo "- Update Kubernetes/Docker Swarm"
-          echo "- Run smoke tests"
-          echo "- Send notifications"
+  #     - name: Deployment summary
+  #       run: |
+  #         echo "==================================="
+  #         echo "Deployment would happen here"
+  #         echo "==================================="
+  #         echo "In production, this would:"
+  #         echo "- Push Docker images to registry"
+  #         echo "- Update Kubernetes/Docker Swarm"
+  #         echo "- Run smoke tests"
+  #         echo "- Send notifications"
 
-  # Job 7: Monitor
-  monitor:
-    runs-on: ubuntu-latest
-    needs: deploy
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
+  # # Job 7: Monitor
+  # monitor:
+  #   runs-on: ubuntu-latest
+  #   needs: deploy
+  #   if: github.ref == 'refs/heads/main'
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: '3.10'
 
-      - name: Install dependencies
-        run: |
-          pip install pandas numpy
-        continue-on-error: true
+  #     - name: Install dependencies
+  #       run: |
+  #         pip install pandas numpy
+  #       continue-on-error: true
 
-      - name: Check model performance
-        run: |
-          if [ -f "mlops/monitor_model.py" ]; then
-            python mlops/monitor_model.py
-          else
-            echo "⚠️ monitor_model.py not found"
-            echo "Creating monitoring report..."
-            mkdir -p mlops
-            echo "Model monitoring would check:"
-            echo "- Accuracy metrics"
-            echo "- Latency"
-            echo "- Error rates"
-          fi
-        continue-on-error: true
+  #     - name: Check model performance
+  #       run: |
+  #         if [ -f "mlops/monitor_model.py" ]; then
+  #           python mlops/monitor_model.py
+  #         else
+  #           echo "⚠️ monitor_model.py not found"
+  #           echo "Creating monitoring report..."
+  #           mkdir -p mlops
+  #           echo "Model monitoring would check:"
+  #           echo "- Accuracy metrics"
+  #           echo "- Latency"
+  #           echo "- Error rates"
+  #         fi
+  #       continue-on-error: true
 
-      - name: Check data drift
-        run: |
-          if [ -f "mlops/drift_detection.py" ]; then
-            python mlops/drift_detection.py
-          else
-            echo "⚠️ drift_detection.py not found"
-            echo "Data drift detection would check:"
-            echo "- Feature distributions"
-            echo "- Statistical tests"
-            echo "- Anomaly detection"
-          fi
-        continue-on-error: true
+  #     - name: Check data drift
+  #       run: |
+  #         if [ -f "mlops/drift_detection.py" ]; then
+  #           python mlops/drift_detection.py
+  #         else
+  #           echo "⚠️ drift_detection.py not found"
+  #           echo "Data drift detection would check:"
+  #           echo "- Feature distributions"
+  #           echo "- Statistical tests"
+  #           echo "- Anomaly detection"
+  #         fi
+  #       continue-on-error: true
 
-      - name: Send metrics to monitoring
-        run: |
-          echo "📊 Sending metrics to monitoring system..."
-          echo "Timestamp: $(date)"
-          echo "Status: Pipeline completed successfully"
+  #     - name: Send metrics to monitoring
+  #       run: |
+  #         echo "📊 Sending metrics to monitoring system..."
+  #         echo "Timestamp: $(date)"
+  #         echo "Status: Pipeline completed successfully"
 
-  # Job 8: Pipeline Summary
-  summary:
-    runs-on: ubuntu-latest
-    needs: [scrape, process, train, test, build]
-    if: always()
-    steps:
-      - name: Pipeline Summary
-        run: |
-          echo "==================================="
-          echo "MLOps Pipeline Summary"
-          echo "==================================="
-          echo "Scrape: ${{ needs.scrape.result }}"
-          echo "Process: ${{ needs.process.result }}"
-          echo "Train: ${{ needs.train.result }}"
-          echo "Test: ${{ needs.test.result }}"
-          echo "Build: ${{ needs.build.result }}"
-          echo "==================================="
+  # # Job 8: Pipeline Summary
+  # summary:
+  #   runs-on: ubuntu-latest
+  #   needs: [scrape, process, train, test, build]
+  #   if: always()
+  #   steps:
+  #     - name: Pipeline Summary
+  #       run: |
+  #         echo "==================================="
+  #         echo "MLOps Pipeline Summary"
+  #         echo "==================================="
+  #         echo "Scrape: ${{ needs.scrape.result }}"
+  #         echo "Process: ${{ needs.process.result }}"
+  #         echo "Train: ${{ needs.train.result }}"
+  #         echo "Test: ${{ needs.test.result }}"
+  #         echo "Build: ${{ needs.build.result }}"
+  #         echo "==================================="
           
-          if [[ "${{ needs.scrape.result }}" == "success" ]] && \
-             [[ "${{ needs.process.result }}" == "success" ]] && \
-             [[ "${{ needs.build.result }}" == "success" ]]; then
-            echo "✅ Pipeline completed successfully!"
-            exit 0
-          else
-            echo "⚠️ Pipeline completed with some warnings"
-            echo "Check individual job logs for details"
-            exit 0
-          fi
+  #         if [[ "${{ needs.scrape.result }}" == "success" ]] && \
+  #            [[ "${{ needs.process.result }}" == "success" ]] && \
+  #            [[ "${{ needs.build.result }}" == "success" ]]; then
+  #           echo "✅ Pipeline completed successfully!"
+  #           exit 0
+  #         else
+  #           echo "⚠️ Pipeline completed with some warnings"
+  #           echo "Check individual job logs for details"
+  #           exit 0
+  #         fi
