@@ -57,71 +57,71 @@ jobs:
           path: data/raw/*.csv
           if-no-files-found: warn
 
-  # # Job 2: Data Processing
-  # process:
-  #   runs-on: ubuntu-latest
-  #   needs: scrape
-  #   steps:
-  #     - uses: actions/checkout@v4
+  # Job 2: Data Processing
+  process:
+    runs-on: ubuntu-latest
+    # needs: scrape
+    steps:
+      - uses: actions/checkout@v4
 
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: '3.10'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
-  #     - name: Download scraped data
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: raw-data
-  #         path: data/raw/
-  #       continue-on-error: true
+      - name: Download scraped data
+        uses: actions/download-artifact@v4
+        with:
+          name: raw-data
+          path: data/raw/
+        continue-on-error: true
 
-  #     - name: Install dependencies
-  #       run: |
-  #         pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
 
-  #     - name: Check if data exists
-  #       run: |
-  #         # if [ -f "data/raw/"*.csv ]; then
-  #         # if [ -n "$(ls data/raw/*.csv 2>/dev/null)" ]; then
-  #         if ls data/raw/*.csv 1> /dev/null 2>&1; then
-  #           echo "✅ Raw data found"
-  #           ls -lh data/raw/
-  #         else
-  #           echo "⚠️ No raw data found, using sample data"
-  #           mkdir -p data/raw
-  #         fi
+      - name: Check if data exists
+        run: |
+          # if [ -f "data/raw/"*.csv ]; then
+          # if [ -n "$(ls data/raw/*.csv 2>/dev/null)" ]; then
+          if ls data/raw/*.csv 1> /dev/null 2>&1; then
+            echo "✅ Raw data found"
+            ls -lh data/raw/
+          else
+            echo "⚠️ No raw data found, using sample data"
+            mkdir -p data/raw
+          fi
 
-  #     - name: Clean data
-  #       run: |
-  #         python data_cleaner.py
-  #       continue-on-error: true
+      - name: Clean data
+        run: |
+          python preprocessing/data_cleaner_complete.py
+        continue-on-error: true
 
-  #     - name: Run sentiment analysis
-  #       run: |
-  #         python sentiment_analyzer.py
-  #       continue-on-error: true
+      - name: Run sentiment analysis
+        run: |
+          python analysis/sentiment_simple_analysis.py
+        continue-on-error: true
 
-  #     - name: Run engagement analysis
-  #       run: |
-  #         python engagement_analyzer.py
-  #       continue-on-error: true
+      - name: Run engagement analysis
+        run: |
+          python analysis/engagement_analysis.py
+        continue-on-error: true
 
-  #     - name: Verify processed data
-  #       run: |
-  #         if [ -d "data/processed" ] && [ "$(ls -A data/processed/*.csv 2>/dev/null)" ]; then
-  #           echo "✅ Data processed successfully"
-  #           ls -lh data/processed/
-  #         else
-  #           echo "❌ Data processing failed"
-  #           exit 1
-  #         fi
+      - name: Verify processed data
+        run: |
+          if [ -d "data/processed" ] && [ "$(ls -A data/processed/*.csv 2>/dev/null)" ]; then
+            echo "✅ Data processed successfully"
+            ls -lh data/processed/
+          else
+            echo "❌ Data processing failed"
+            exit 1
+          fi
 
-  #     - name: Upload processed data
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: processed-data
-  #         path: data/processed/*.csv
+      - name: Upload processed data
+        uses: actions/upload-artifact@v4
+        with:
+          name: processed-data
+          path: data/processed/*.csv
 
   # # Job 3: Model Training
   # train:
