@@ -1,6 +1,6 @@
 """
-Data Cleaner - Complete preprocessing untuk tweets IndoPopBase
-Jalankan: python data_cleaner.py
+Data Cleaner - Automated preprocessing untuk tweets IndoPopBase
+Untuk MLOps Pipeline - No user input required
 """
 
 import pandas as pd
@@ -8,6 +8,7 @@ import re
 import os
 from datetime import datetime
 import warnings
+import glob
 warnings.filterwarnings('ignore')
 
 class TweetDataCleaner:
@@ -176,100 +177,177 @@ class TweetDataCleaner:
         print("\n" + "="*70)
 
 
-class MultiFileProcessor:
-    """Process multiple CSV files"""
+def get_newest_dataset(data_dir='data/raw', dataset_prefix='barengwarga'):
+    """
+    Find the newest dataset based on filename timestamp
+    Looks for files matching pattern: {dataset_prefix}_*_YYYYMMDD_*.csv
+    """
+    print(f"🔍 Looking for {dataset_prefix} datasets in {data_dir}...")
     
-    def __init__(self, data_dir='data'):
-        self.data_dir = data_dir
+    # Find all matching CSV files
+    pattern = os.path.join(data_dir, f"{dataset_prefix}_*.csv")
+    csv_files = glob.glob(pattern)
     
-    def process_all_files(self):
-        """Process all CSV files in data directory"""
-        print("="*70)
-        print("🔄 PROCESSING ALL DATA FILES")
-        print("="*70)
-        
-        # Find all CSV files
-        csv_files = []
-        for file in os.listdir(self.data_dir):
-            if file.endswith('.csv') and not file.startswith('cleaned_'):
-                csv_files.append(os.path.join(self.data_dir, file))
-        
-        if not csv_files:
-            print("\n❌ No CSV files found in data directory")
-            return
-        
-        print(f"\n📁 Found {len(csv_files)} file(s) to process:")
-        for file in csv_files:
-            print(f"   - {os.path.basename(file)}")
-        
-        # Process each file
-        all_dfs = []
-        for file in csv_files:
-            print(f"\n\n{'='*70}")
-            print(f"Processing: {os.path.basename(file)}")
-            print('='*70)
-            
-            cleaner = TweetDataCleaner(file)
-            df = cleaner.clean_dataset()
-            
-            if df is not None:
-                all_dfs.append(df)
-        
-        # Combine all dataframes
-        if all_dfs:
-            print("\n\n" + "="*70)
-            print("📦 COMBINING ALL DATASETS")
-            print("="*70)
-            
-            combined_df = pd.concat(all_dfs, ignore_index=True)
-            
-            # Remove duplicates across files
-            original_len = len(combined_df)
-            combined_df = combined_df.drop_duplicates(subset=['content'])
-            print(f"\n🔄 Removed {original_len - len(combined_df)} duplicates across files")
-            
-            # Save combined dataset
-            output_path = os.path.join(self.data_dir, 'processed', 'all_tweets_cleaned.csv')
-            combined_df.to_csv(output_path, index=False, encoding='utf-8')
-            
-            print(f"\n💾 Saved combined dataset to: {output_path}")
-            print(f"📊 Total records: {len(combined_df)}")
-            
-            return combined_df
-        
+    if not csv_files:
+        print(f"❌ No {dataset_prefix} datasets found in {data_dir}")
         return None
+    
+    print(f"📁 Found {len(csv_files)} {dataset_prefix} file(s)")
+    
+    # Extract timestamps from filenames and sort
+    files_with_timestamps = []
+    for file in csv_files:
+        basename = os.path.basename(file)
+        # Extract date from filename (format: prefix_type_YYYYMMDD_HHMMSS.csv)
+        parts = basename.split('_')
+        if len(parts) >= 3:
+            try:
+                # Try to parse the date part (usually 3rd element)
+                date_str = parts[2]
+                timestamp = datetime.strptime(date_str, '%Y%m%d')
+                files_with_timestamps.append((file, timestamp, basename))
+            except:
+                # If parsing fails, use file modification time
+                mtime = os.path.getmtime(file)
+                timestamp = datetime.fromtimestamp(mtime)
+                files_with_timestamps.append((file, timestamp, basename))
+    
+    if not files_with_timestamps:
+        print("⚠️ Could not parse timestamps, using first file found")
+        return csv_files[0]
+    
+    # Sort by timestamp (newest first)
+    files_with_timestamps.sort(key=lambda x: x[1], reverse=True)
+    
+    # Print all found files
+    print("\n📋 Available datasets (sorted by date):")
+    for i, (file, timestamp, basename) in enumerate(files_with_timestamps, 1):
+        print(f"   {i}. {basename} ({timestamp.strftime('%Y-%m-%d')})")
+    
+    # Return the newest file
+    newest_file = files_with_timestamps[0][0]
+    newest_name = files_with_timestamps[0][2]
+    newest_date = files_with_timestamps[0][1]
+    
+    print(f"\n✅ Selected newest dataset: {newest_name}")
+    print(f"   Date: {newest_date.strftime('%Y-%m-%d')}")
+    
+    return newest_file
+
+
+def process_dataset_group(data_dir='data/raw', dataset_prefix='barengwarga'):
+    """
+    Process all files from the newest dataset group
+    (original_tweets, quotes, replies)
+    """
+    print("="*70)
+    print(f"📦 PROCESSING {dataset_prefix.upper()} DATASET GROUP")
+    print("="*70)
+    
+    # Find all files matching the dataset prefix with the newest timestamp
+    pattern = os.path.join(data_dir, f"{dataset_prefix}_*.csv")
+    all_files = glob.glob(pattern)
+    
+    if not all_files:
+        print(f"❌ No {dataset_prefix} datasets found")
+        return None
+    
+    # Group files by timestamp
+    grouped_files = {}
+    for file in all_files:
+        basename = os.path.basename(file)
+        parts = basename.split('_')
+        if len(parts) >= 3:
+            date_str = parts[2]  # YYYYMMDD
+            if date_str not in grouped_files:
+                grouped_files[date_str] = []
+            grouped_files[date_str].append(file)
+    
+    # Get the newest group
+    if not grouped_files:
+        print("❌ Could not group files by timestamp")
+        return None
+    
+    newest_date = max(grouped_files.keys())
+    newest_group = grouped_files[newest_date]
+    
+    print(f"\n✅ Found {len(newest_group)} files from {newest_date}:")
+    for file in newest_group:
+        print(f"   - {os.path.basename(file)}")
+    
+    # Process each file in the group
+    all_dfs = []
+    for file in newest_group:
+        print(f"\n\n{'='*70}")
+        print(f"Processing: {os.path.basename(file)}")
+        print('='*70)
+        
+        cleaner = TweetDataCleaner(file)
+        df = cleaner.clean_dataset()
+        
+        if df is not None:
+            all_dfs.append(df)
+    
+    # Combine all dataframes
+    if all_dfs:
+        print("\n\n" + "="*70)
+        print("📦 COMBINING ALL FILES FROM DATASET")
+        print("="*70)
+        
+        combined_df = pd.concat(all_dfs, ignore_index=True)
+        
+        # Remove duplicates across files
+        original_len = len(combined_df)
+        combined_df = combined_df.drop_duplicates(subset=['content'])
+        print(f"\n🔄 Removed {original_len - len(combined_df)} duplicates across files")
+        
+        # Save combined dataset
+        output_dir = 'data/processed'
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(output_dir, f'{dataset_prefix}_all_tweets_cleaned.csv')
+        combined_df.to_csv(output_path, index=False, encoding='utf-8')
+        
+        print(f"\n💾 Saved combined dataset to: {output_path}")
+        print(f"📊 Total records: {len(combined_df)}")
+        
+        return combined_df
+    
+    return None
 
 
 def main():
-    """Main execution"""
+    """Main execution - automated for MLOps pipeline"""
     print("="*70)
-    print("🚀 TWEET DATA CLEANER - IndoPopBase Analytics")
+    print("🚀 TWEET DATA CLEANER - Automated MLOps Pipeline")
     print("="*70)
+    print(f"⏰ Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
-    # Ask user for input
-    print("\nOptions:")
-    print("1. Process single file")
-    print("2. Process all files in data/ directory")
+    # Configuration
+    DATA_DIR = 'data/raw'
+    DATASET_PREFIX = 'barengwarga'  # Change this if needed
     
-    # choice = input("\nChoose option (1 or 2): ").strip()
+    # Check if data directory exists
+    if not os.path.exists(DATA_DIR):
+        print(f"\n❌ Directory '{DATA_DIR}' not found!")
+        print(f"💡 Please ensure your data files are in '{DATA_DIR}' folder")
+        return
     
-    # if choice == '1':
-    file_path = input("Enter CSV file path: ").strip()
-    if os.path.exists(file_path):
-        cleaner = TweetDataCleaner(file_path)
-        cleaner.clean_dataset()
+    # Process the newest dataset group
+    result = process_dataset_group(DATA_DIR, DATASET_PREFIX)
+    
+    if result is not None:
+        print("\n" + "="*70)
+        print("✅ DATA CLEANING COMPLETED SUCCESSFULLY!")
+        print("="*70)
+        print(f"📁 Processed files saved to: data/processed/")
+        print(f"📊 Total tweets processed: {len(result)}")
     else:
-        print(f"❌ File not found: {file_path}")
+        print("\n" + "="*70)
+        print("❌ DATA CLEANING FAILED")
+        print("="*70)
+        print("💡 Check error messages above for details")
     
-    # elif choice == '2':
-    #     processor = MultiFileProcessor()
-    #     processor.process_all_files()
-    
-    # else:
-    #     print("❌ Invalid choice")
-    
-    print("\n✅ Data cleaning completed!")
-    print("📁 Check the 'data/processed/' folder for cleaned files")
+    print(f"\n⏰ Finished at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 
 if __name__ == "__main__":
