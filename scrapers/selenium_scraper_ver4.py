@@ -32,7 +32,7 @@ import pickle
 import re
 
 class EnhancedTwitterScraper:
-    def __init__(self, headless=False, use_cookies=True):
+    def __init__(self, headless=True, use_cookies=True):
         """
         Initialize scraper
         
