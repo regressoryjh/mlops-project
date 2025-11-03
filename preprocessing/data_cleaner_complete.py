@@ -177,138 +177,270 @@ class TweetDataCleaner:
         print("\n" + "="*70)
 
 
-def get_newest_dataset(data_dir='data/raw', dataset_prefix='barengwarga'):
+def find_newest_dataset(data_dir='data/raw'):
     """
-    Find the newest dataset based on filename timestamp
-    Looks for files matching pattern: {dataset_prefix}_*_YYYYMMDD_*.csv
+    Find the newest complete dataset (account with all 3 file types)
+    Returns: (account_name, date_str, file_dict) or None
     """
-    print(f"🔍 Looking for {dataset_prefix} datasets in {data_dir}...")
+    print(f"🔍 Scanning {data_dir} for complete datasets...")
     
-    # Find all matching CSV files
-    pattern = os.path.join(data_dir, f"{dataset_prefix}_*.csv")
-    csv_files = glob.glob(pattern)
-    
-    if not csv_files:
-        print(f"❌ No {dataset_prefix} datasets found in {data_dir}")
-        return None
-    
-    print(f"📁 Found {len(csv_files)} {dataset_prefix} file(s)")
-    
-    # Extract timestamps from filenames and sort
-    files_with_timestamps = []
-    for file in csv_files:
-        basename = os.path.basename(file)
-        # Extract date from filename (format: prefix_type_YYYYMMDD_HHMMSS.csv)
-        parts = basename.split('_')
-        if len(parts) >= 3:
-            try:
-                # Try to parse the date part (usually 3rd element)
-                date_str = parts[2]
-                timestamp = datetime.strptime(date_str, '%Y%m%d')
-                files_with_timestamps.append((file, timestamp, basename))
-            except:
-                # If parsing fails, use file modification time
-                mtime = os.path.getmtime(file)
-                timestamp = datetime.fromtimestamp(mtime)
-                files_with_timestamps.append((file, timestamp, basename))
-    
-    if not files_with_timestamps:
-        print("⚠️ Could not parse timestamps, using first file found")
-        return csv_files[0]
-    
-    # Sort by timestamp (newest first)
-    files_with_timestamps.sort(key=lambda x: x[1], reverse=True)
-    
-    # Print all found files
-    print("\n📋 Available datasets (sorted by date):")
-    for i, (file, timestamp, basename) in enumerate(files_with_timestamps, 1):
-        print(f"   {i}. {basename} ({timestamp.strftime('%Y-%m-%d')})")
-    
-    # Return the newest file
-    newest_file = files_with_timestamps[0][0]
-    newest_name = files_with_timestamps[0][2]
-    newest_date = files_with_timestamps[0][1]
-    
-    print(f"\n✅ Selected newest dataset: {newest_name}")
-    print(f"   Date: {newest_date.strftime('%Y-%m-%d')}")
-    
-    return newest_file
-
-
-def process_dataset_group(data_dir='data/raw', dataset_prefix='barengwarga'):
-    """
-    Process all files from the newest dataset group
-    (original_tweets, quotes, replies)
-    """
-    print("="*70)
-    print(f"📦 PROCESSING {dataset_prefix.upper()} DATASET GROUP")
-    print("="*70)
-    
-    # Find all files matching the dataset prefix with the newest timestamp
-    pattern = os.path.join(data_dir, f"{dataset_prefix}_*.csv")
-    all_files = glob.glob(pattern)
+    # Find all CSV files
+    all_files = glob.glob(os.path.join(data_dir, '*.csv'))
     
     if not all_files:
-        print(f"❌ No {dataset_prefix} datasets found")
+        print(f"❌ No CSV files found in {data_dir}")
         return None
     
-    # Group files by timestamp
-    grouped_files = {}
-    for file in all_files:
-        basename = os.path.basename(file)
-        parts = basename.split('_')
-        if len(parts) >= 3:
-            date_str = parts[2]  # YYYYMMDD
-            if date_str not in grouped_files:
-                grouped_files[date_str] = []
-            grouped_files[date_str].append(file)
+    # Parse filenames: [account]_[type]_[YYYYMMDD]_[HHMMSS].csv
+    datasets = {}  # {(account, date): {type: filepath}}
     
-    # Get the newest group
-    if not grouped_files:
-        print("❌ Could not group files by timestamp")
+    for filepath in all_files:
+        basename = os.path.basename(filepath)
+        parts = basename.replace('.csv', '').split('_')
+        
+        # Expected format: account_type_date_time
+        # e.g., barengwarga_all_quotes_20251013_141157.csv
+        if len(parts) >= 4:
+            # Handle compound account names (e.g., "indo_pop_base")
+            # and compound types (e.g., "all_quotes", "original_tweets")
+            
+            # Find the date (8 digits)
+            date_idx = None
+            for i, part in enumerate(parts):
+                if len(part) == 8 and part.isdigit():
+                    date_idx = i
+                    break
+            
+            if date_idx is None or date_idx < 2:
+                continue
+            
+            # Everything before date is account + type
+            account_type_parts = parts[:date_idx]
+            date_str = parts[date_idx]
+            
+            # Last part of account_type should be the type indicator
+            # Types: "all_quotes", "all_replies", "original_tweets"
+            if len(account_type_parts) >= 2:
+                # Check if ends with known type patterns
+                type_str = '_'.join(account_type_parts[-2:])  # e.g., "all_quotes"
+                
+                # Identify the type
+                if 'quotes' in type_str:
+                    tweet_type = 'quotes'
+                elif 'replies' in type_str:
+                    tweet_type = 'replies'
+                elif 'original' in type_str or 'tweets' in type_str:
+                    tweet_type = 'original'
+                else:
+                    continue
+                
+                # Account name is everything before the type
+                if tweet_type in ['quotes', 'replies']:
+                    # For "all_quotes" or "all_replies", remove last 2 parts
+                    account_parts = account_type_parts[:-2]
+                else:
+                    # For "original_tweets", remove last 2 parts
+                    account_parts = account_type_parts[:-2]
+                
+                if not account_parts:
+                    continue
+                    
+                account_name = '_'.join(account_parts)
+                
+                # Store in datasets dict
+                key = (account_name, date_str)
+                if key not in datasets:
+                    datasets[key] = {}
+                datasets[key][tweet_type] = filepath
+    
+    if not datasets:
+        print("❌ No valid datasets found")
         return None
     
-    newest_date = max(grouped_files.keys())
-    newest_group = grouped_files[newest_date]
+    # Find complete datasets (with all 3 types)
+    complete_datasets = []
+    for (account, date), files in datasets.items():
+        if len(files) == 3 and all(t in files for t in ['quotes', 'replies', 'original']):
+            complete_datasets.append((account, date, files))
     
-    print(f"\n✅ Found {len(newest_group)} files from {newest_date}:")
-    for file in newest_group:
-        print(f"   - {os.path.basename(file)}")
+    if not complete_datasets:
+        print("⚠️ No complete datasets found (need quotes, replies, and original_tweets)")
+        print("\n📋 Available datasets:")
+        for (account, date), files in sorted(datasets.items(), key=lambda x: x[0][1], reverse=True):
+            print(f"   {account} ({date}): {list(files.keys())}")
+        return None
     
-    # Process each file in the group
+    # Sort by date (newest first)
+    complete_datasets.sort(key=lambda x: x[1], reverse=True)
+    
+    print(f"\n✅ Found {len(complete_datasets)} complete dataset(s):")
+    for account, date, files in complete_datasets:
+        print(f"   - {account} ({date}): {len(files)} files")
+    
+    # Return the newest complete dataset
+    newest = complete_datasets[0]
+    print(f"\n🎯 Selected: {newest[0]} ({newest[1]})")
+    
+    return newest
+
+
+def process_dataset_group(data_dir='data/raw'):
+    """
+    Automatically find and process the newest complete dataset
+    """
+    print("="*70)
+    print("📦 AUTOMATED DATASET PROCESSING")
+    print("="*70)
+    
+    # Find newest complete dataset
+    result = find_newest_dataset(data_dir)
+    
+    if result is None:
+        return None
+    
+    account_name, date_str, files = result
+    
+    print(f"\n📂 Processing files:")
+    for tweet_type, filepath in files.items():
+        print(f"   - {tweet_type}: {os.path.basename(filepath)}")
+    
+    # Process each file
     all_dfs = []
-    for file in newest_group:
+    for tweet_type, filepath in sorted(files.items()):
         print(f"\n\n{'='*70}")
-        print(f"Processing: {os.path.basename(file)}")
+        print(f"Processing: {tweet_type.upper()}")
+        print(f"File: {os.path.basename(filepath)}")
         print('='*70)
         
-        cleaner = TweetDataCleaner(file)
+        cleaner = TweetDataCleaner(filepath)
         df = cleaner.clean_dataset()
         
         if df is not None:
+            # Add tweet type column
+            df['tweet_type'] = tweet_type
             all_dfs.append(df)
     
-    # Combine all dataframes
+    # Combine all dataframes with LEFT JOIN logic
     if all_dfs:
         print("\n\n" + "="*70)
-        print("📦 COMBINING ALL FILES FROM DATASET")
+        print("📦 COMBINING ALL TWEET TYPES (LEFT JOIN)")
         print("="*70)
+        print("💡 Enriching original tweets with their quotes & replies")
         
-        combined_df = pd.concat(all_dfs, ignore_index=True)
+        # Separate dataframes by type
+        original_df = None
+        quotes_df = None
+        replies_df = None
         
-        # Remove duplicates across files
+        for df in all_dfs:
+            tweet_type = df['tweet_type'].iloc[0] if len(df) > 0 else None
+            if tweet_type == 'original':
+                original_df = df.copy()
+            elif tweet_type == 'quotes':
+                quotes_df = df.copy()
+            elif tweet_type == 'replies':
+                replies_df = df.copy()
+        
+        if original_df is None:
+            print("❌ No original tweets found!")
+            return None
+        
+        print(f"📊 Left table (original tweets): {len(original_df):,} records")
+        
+        # Prepare quotes and replies for joining
+        engagement_tweets = []
+        
+        if quotes_df is not None:
+            print(f"📊 Quotes found: {len(quotes_df):,} records")
+            quotes_df['engagement_type'] = 'quote'
+            quotes_df['parent_url'] = quotes_df['quote_of']
+            engagement_tweets.append(quotes_df)
+        
+        if replies_df is not None:
+            print(f"📊 Replies found: {len(replies_df):,} records")
+            replies_df['engagement_type'] = 'reply'
+            replies_df['parent_url'] = replies_df['reply_of']
+            engagement_tweets.append(replies_df)
+        
+        if not engagement_tweets:
+            print("⚠️ No quotes or replies found, using original tweets only")
+            combined_df = original_df
+        else:
+            # Combine quotes and replies
+            all_engagements = pd.concat(engagement_tweets, ignore_index=True)
+            print(f"\n📊 Total engagement tweets: {len(all_engagements):,}")
+            
+            # LEFT JOIN: Keep all original tweets, add engagement data
+            # Group engagement tweets by parent URL
+            print("\n🔗 Performing LEFT JOIN (original tweets + engagements)...")
+            
+            # Create a column for joining in original_df
+            original_df['join_key'] = original_df['tweet_url']
+            all_engagements['join_key'] = all_engagements['parent_url']
+            
+            # Perform LEFT JOIN
+            combined_df = original_df.merge(
+                all_engagements,
+                on='join_key',
+                how='left',
+                suffixes=('_original', '_engagement')
+            )
+            
+            # Count matches
+            matched_originals = combined_df['content_engagement'].notna().sum()
+            unique_originals_with_engagement = combined_df[combined_df['content_engagement'].notna()]['content_original'].nunique()
+            
+            print(f"✅ Join completed!")
+            print(f"   - Total rows (original + engagements): {len(combined_df):,}")
+            print(f"   - Original tweets with engagement: {unique_originals_with_engagement:,} / {len(original_df):,}")
+            print(f"   - Total engagement responses: {matched_originals:,}")
+            print(f"   - Original tweets without engagement: {len(original_df) - unique_originals_with_engagement:,}")
+            
+            # Calculate engagement stats per original tweet
+            engagement_stats = combined_df[combined_df['content_engagement'].notna()].groupby('content_original').agg({
+                'content_engagement': 'count',
+                'engagement_type': lambda x: x.value_counts().to_dict()
+            }).reset_index()
+            
+            if len(engagement_stats) > 0:
+                print(f"\n📈 Engagement Distribution:")
+                avg_engagement = engagement_stats['content_engagement'].mean()
+                max_engagement = engagement_stats['content_engagement'].max()
+                print(f"   - Avg engagements per original tweet: {avg_engagement:.1f}")
+                print(f"   - Max engagements on single tweet: {max_engagement:.0f}")
+        
+        # Remove duplicates based on original content and engagement content combination
         original_len = len(combined_df)
-        combined_df = combined_df.drop_duplicates(subset=['content'])
-        print(f"\n🔄 Removed {original_len - len(combined_df)} duplicates across files")
+        # Keep duplicates if they're different engagements on same original tweet
+        if 'content_engagement' in combined_df.columns:
+            combined_df = combined_df.drop_duplicates(subset=['content_original', 'content_engagement'])
+        else:
+            combined_df = combined_df.drop_duplicates(subset=['content'])
+        print(f"\n🔄 Removed {original_len - len(combined_df)} duplicates")
         
         # Save combined dataset
         output_dir = 'data/processed'
         os.makedirs(output_dir, exist_ok=True)
-        output_path = os.path.join(output_dir, f'{dataset_prefix}_all_tweets_cleaned.csv')
+        output_filename = f'{account_name}_all_tweets_cleaned_{date_str}.csv'
+        output_path = os.path.join(output_dir, output_filename)
         combined_df.to_csv(output_path, index=False, encoding='utf-8')
         
         print(f"\n💾 Saved combined dataset to: {output_path}")
         print(f"📊 Total records: {len(combined_df)}")
+        
+        # Print breakdown by type
+        print(f"\n📋 Breakdown by type:")
+        for tweet_type in ['original', 'quotes', 'replies']:
+            count = len(combined_df[combined_df['tweet_type'] == tweet_type])
+            if count > 0:
+                print(f"   - {tweet_type}: {count:,} tweets")
+        
+        # Print join statistics
+        if 'content_parent' in combined_df.columns:
+            print(f"\n🔗 Join Statistics:")
+            print(f"   - Total tweets (quotes + replies): {len(combined_df):,}")
+            print(f"   - With parent tweet context: {combined_df['content_parent'].notna().sum():,}")
+            print(f"   - Without parent context: {combined_df['content_parent'].isna().sum():,}")
         
         return combined_df
     
@@ -324,7 +456,6 @@ def main():
     
     # Configuration
     DATA_DIR = 'data/raw'
-    DATASET_PREFIX = 'barengwarga'  # Change this if needed
     
     # Check if data directory exists
     if not os.path.exists(DATA_DIR):
@@ -332,15 +463,15 @@ def main():
         print(f"💡 Please ensure your data files are in '{DATA_DIR}' folder")
         return
     
-    # Process the newest dataset group
-    result = process_dataset_group(DATA_DIR, DATASET_PREFIX)
+    # Process the newest complete dataset
+    result = process_dataset_group(DATA_DIR)
     
     if result is not None:
         print("\n" + "="*70)
         print("✅ DATA CLEANING COMPLETED SUCCESSFULLY!")
         print("="*70)
         print(f"📁 Processed files saved to: data/processed/")
-        print(f"📊 Total tweets processed: {len(result)}")
+        print(f"📊 Total tweets processed: {len(result):,}")
     else:
         print("\n" + "="*70)
         print("❌ DATA CLEANING FAILED")
