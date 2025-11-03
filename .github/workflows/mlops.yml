@@ -82,7 +82,9 @@ jobs:
 
       - name: Check if data exists
         run: |
-          if [ -f "data/raw/"*.csv ]; then
+          # if [ -f "data/raw/"*.csv ]; then
+          # if [ -n "$(ls data/raw/*.csv 2>/dev/null)" ]; then
+          if ls data/raw/*.csv 1> /dev/null 2>&1; then
             echo "✅ Raw data found"
             ls -lh data/raw/
           else

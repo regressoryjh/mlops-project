@@ -32,7 +32,7 @@ import pickle
 import re
 
 class EnhancedTwitterScraper:
-    def __init__(self, headless=True, use_cookies=True):
+    def __init__(self, headless=False, use_cookies=True):
         """
         Initialize scraper
         
@@ -1114,7 +1114,7 @@ if __name__ == "__main__":
     # ========================================
     
     TARGET_USERNAME = "barengwarga"  # Target Twitter username (without @)
-    HEADLESS = False  # Set True after first successful login
+    HEADLESS = True  # Set True after first successful login
     USE_COOKIES = True  # Use cookie-based login
     ALLOW_NO_LOGIN = True  # Allow preview without login
     ACCOUNT_NAME = "default"  # For multiple accounts
