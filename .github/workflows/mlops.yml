@@ -10,52 +10,52 @@ on:
     - cron: '0 0 * * 0'
   workflow_dispatch:
 
-jobs:
-  # Job 1: Data Collection (SCRAPING)
-  scrape:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+# jobs:
+#   # Job 1: Data Collection (SCRAPING)
+#   scrape:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+#       - name: Set up Python
+#         uses: actions/setup-python@v4
+#         with:
+#           python-version: '3.10'
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+#       - name: Install dependencies
+#         run: |
+#           pip install -r requirements.txt
 
-      # Install Chrome and ChromeDriver for Selenium
-      - name: Setup Chrome
-        uses: browser-actions/setup-chrome@v1
-        with:
-          chrome-version: stable
+#       # Install Chrome and ChromeDriver for Selenium
+#       - name: Setup Chrome
+#         uses: browser-actions/setup-chrome@v1
+#         with:
+#           chrome-version: stable
 
-      - name: Install ChromeDriver
-        run: |
-          pip install webdriver-manager selenium
+#       - name: Install ChromeDriver
+#         run: |
+#           pip install webdriver-manager selenium
 
-      - name: Run scraper
-        run: |
-          python scrapers/selenium_scraper_ver4.py
-        continue-on-error: true  # Continue even if scraping fails
+#       - name: Run scraper
+#         run: |
+#           python scrapers/selenium_scraper_ver4.py
+#         continue-on-error: true  # Continue even if scraping fails
 
-      - name: Verify scraped data
-        run: |
-          if [ -d "data/raw" ] && [ "$(ls -A data/raw/*.csv 2>/dev/null)" ]; then
-            echo "✅ Data scraped successfully"
-            ls -lh data/raw/
-          else
-            echo "⚠️ No new data scraped, using existing data"
-          fi
+#       - name: Verify scraped data
+#         run: |
+#           if [ -d "data/raw" ] && [ "$(ls -A data/raw/*.csv 2>/dev/null)" ]; then
+#             echo "✅ Data scraped successfully"
+#             ls -lh data/raw/
+#           else
+#             echo "⚠️ No new data scraped, using existing data"
+#           fi
 
-      - name: Upload raw data
-        uses: actions/upload-artifact@v4
-        with:
-          name: raw-data
-          path: data/raw/*.csv
-          if-no-files-found: warn
+#       - name: Upload raw data
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: raw-data
+#           path: data/raw/*.csv
+#           if-no-files-found: warn
 
   # Job 2: Data Processing
   process:
