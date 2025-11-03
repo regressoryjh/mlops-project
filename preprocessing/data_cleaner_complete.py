@@ -251,22 +251,22 @@ def main():
     print("1. Process single file")
     print("2. Process all files in data/ directory")
     
-    choice = input("\nChoose option (1 or 2): ").strip()
+    # choice = input("\nChoose option (1 or 2): ").strip()
     
-    if choice == '1':
-        file_path = input("Enter CSV file path: ").strip()
-        if os.path.exists(file_path):
-            cleaner = TweetDataCleaner(file_path)
-            cleaner.clean_dataset()
-        else:
-            print(f"❌ File not found: {file_path}")
-    
-    elif choice == '2':
-        processor = MultiFileProcessor()
-        processor.process_all_files()
-    
+    # if choice == '1':
+    file_path = input("Enter CSV file path: ").strip()
+    if os.path.exists(file_path):
+        cleaner = TweetDataCleaner(file_path)
+        cleaner.clean_dataset()
     else:
-        print("❌ Invalid choice")
+        print(f"❌ File not found: {file_path}")
+    
+    # elif choice == '2':
+    #     processor = MultiFileProcessor()
+    #     processor.process_all_files()
+    
+    # else:
+    #     print("❌ Invalid choice")
     
     print("\n✅ Data cleaning completed!")
     print("📁 Check the 'data/processed/' folder for cleaned files")
